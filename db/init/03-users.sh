@@ -2,7 +2,9 @@
 # Two least-privilege users:
 #  - the agents' warehouse user can only SELECT from telecom_dw
 #  - the app user owns the `app` schema (conversation memory) and nothing else
-set -euo pipefail
+# No 'set -u': if this file isn't executable, the MySQL entrypoint sources it, and
+# nounset would leak into the entrypoint's own script.
+set -eo pipefail
 
 mysql -uroot -p"${MYSQL_ROOT_PASSWORD}" <<SQL
 CREATE USER IF NOT EXISTS 'warehouse_ro'@'%' IDENTIFIED BY '${WAREHOUSE_DB_PASSWORD}';
