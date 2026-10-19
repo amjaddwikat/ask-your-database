@@ -54,9 +54,33 @@ jobs:
           WAREHOUSE_URL: mysql+aiomysql://warehouse_ro:ci-readonly@127.0.0.1:3306/telecom_dw
         run: pytest -m integration -v
 
+  frontend:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - run: npm ci
+      - name: Lint
+        run: npm run lint
+      - name: Type check
+        run: npx tsc -p tsconfig.app.json --noEmit
+      - name: Unit tests
+        run: npm test
+      - name: Build
+        run: npm run build
+
   docker:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - name: Build API image
         run: docker build -t ask-your-database-api backend
+      - name: Build frontend image
+        run: docker build -t ask-your-database-frontend frontend
