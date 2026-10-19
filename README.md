@@ -16,7 +16,7 @@ SQL goes through three layers of safety checks before it touches the database.
 
 ```mermaid
 flowchart LR
-    C[Client / frontend] -->|POST /api/v1/chat| API[FastAPI]
+    C[React frontend] -->|POST /api/v1/chat| API[FastAPI]
     API --> O[Orchestrator]
     O --> R[Router Agent]
     R -->|general / blocked| O
@@ -131,14 +131,19 @@ cp .env.example .env        # then fill in GEMINI_API_KEY and the passwords
 docker compose up --build
 ```
 
-MySQL starts with a deterministic sample telecom warehouse: 400 customers, 12 services and 24
-months of billing, in a star schema ([`db/init`](db/init)). Open `http://localhost:8000/docs` and
-try:
+This starts MySQL, the API on `http://localhost:8000` and the web app on
+**`http://localhost:8080`**. MySQL starts with a deterministic sample telecom warehouse: 400
+customers, 12 services and 24 months of billing, in a star schema ([`db/init`](db/init)). Open the
+web app (or the API docs at `http://localhost:8000/docs`) and try:
 
 - *Which contract type has the highest late-payment rate?*
 - *Plot monthly revenue for 2025.*
 - *Top 5 cities by total usage minutes.* → then *Same, but only for Premium plans.*
 - *Delete all customers.* (blocked by the router; and if it got through, by the guard and the DB)
+
+Each answer shows the analysis, a chart when one was asked for, a collapsible **Show SQL** panel
+(query, explanation, first rows) and a one-line agent trace such as
+`router 612ms → sql 1.0s → warehouse 8ms → analysis 1.5s`.
 
 ## Develop
 
@@ -154,8 +159,22 @@ docker compose up -d mysql   # integration tests against real MySQL
 WAREHOUSE_URL=mysql+aiomysql://warehouse_ro:<password>@localhost:3306/telecom_dw pytest -m integration
 ```
 
-CI runs lint, strict mypy, unit tests, integration tests against MySQL, and a Docker build on every
-push.
+Frontend (Vite + React + TypeScript + Tailwind/shadcn + Recharts), against the API from
+`docker compose up -d mysql api`:
+
+```bash
+cd frontend
+cp .env.example .env.local   # set VITE_API_KEY to the API_KEY from the root .env
+npm ci
+npm run dev                  # http://localhost:8080
+npm run lint && npm test && npm run build
+```
+
+Sign-in through Supabase is optional: set `VITE_SUPABASE_URL` and `VITE_SUPABASE_PUBLISHABLE_KEY`
+to turn it on; without them the app opens straight to the chat.
+
+CI runs backend lint, strict mypy, unit tests, integration tests against MySQL, frontend lint, type
+check, tests and build, and Docker builds of both images on every push.
 
 ```
 backend/
@@ -169,6 +188,9 @@ backend/
     db/memory.py       conversation history
     llm/client.py      LLM protocol, Gemini client, structured-output retries
   tests/               unit tests + integration/ (real MySQL)
+frontend/
+  src/lib/api.ts       typed client for the API (mirrors app/schemas.py)
+  src/components/      chat, ChartRenderer, SqlPanel, AgentTrace, shadcn/ui
 db/init/               warehouse schema, seed data, least-privilege users
 legacy/n8n/            the original n8n prototype (see below)
 ```
@@ -192,6 +214,12 @@ before I'd trust it:
 ## Limitations and next steps
 
 - Authentication is a single shared API key. Per-user auth (JWT) and rate limiting would come next.
+  In particular, the web app is built with that key inlined into its JavaScript, which is fine
+  for a local demo but means anyone who can load the page can read it. A deployed version would
+  have the frontend send a user token (e.g. its Supabase session) for the API to verify instead.
+- The sidebar's conversation list is kept in the browser (`localStorage`); the API stores each
+  conversation's messages but has no per-user "list my conversations" endpoint yet. Reopened
+  conversations show their text; charts and SQL are only shown when the answer is first given.
 - Responses aren't streamed. Server-sent events would show each agent's progress live.
 - Schema migrations for the memory table use `create_all`. Alembic would replace that in production.
 - Answer-quality evaluation: a small set of benchmark questions with expected SQL results, run in CI.
