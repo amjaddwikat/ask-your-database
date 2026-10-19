@@ -1,0 +1,533 @@
+{
+  "nodes": [
+    {
+      "parameters": {
+        "content": "# Plot Agent",
+        "height": 560,
+        "width": 2304,
+        "color": 3
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        0,
+        0
+      ],
+      "id": "c29b0698-6482-4f83-a574-6a591db7d58a",
+      "name": "Sticky Note5"
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "plotAgent",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        -304,
+        400
+      ],
+      "id": "f7161847-e5ad-4782-be8b-dd935aefd020",
+      "name": "Plot Agent API"
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT\n  sub.id,\n  sub.session_id,\n  sub.role,\n  LEFT(sub.content, 1500) || CASE WHEN LENGTH(sub.content) > 1500 THEN '...' ELSE '' END AS content,\n  sub.created_at\nFROM (\n  SELECT *\n  FROM messages\n  WHERE session_id = '{{ $json.sessionId }}'\n  ORDER BY created_at DESC\n  LIMIT 10\n) sub\nWHERE sub.role IS DISTINCT FROM 'DB_Agent'\nORDER BY sub.created_at ASC;\n",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        160,
+        80
+      ],
+      "id": "9a686b50-31ea-4a45-82b2-d3bef830fd2a",
+      "name": "conversation history",
+      "alwaysOutputData": true
+    },
+    {
+      "parameters": {
+        "jsCode": "const s = `You are a visualization assistant. For every user question, return exactly one and only one valid JSON object — no markdown fences, no comments, no JS, no trailing commas, no extra text. It must parse with JSON.parse(...) in one shot.\n\nSCHEMA:\n{\n  \"chart_config\": {\n    \"chartType\": \"bar|line|pie|scatter|...\",\n    \"x\": \"<existing field name>\",\n    \"y\": \"<existing field name>\",\n    \"groupBy\": \"<existing field name or null>\",\n    \"axes\": {\n      \"xLabel\": \"string\",\n      \"yLabel\": \"string\"\n    }\n  },\n  \"explanation\": \"{explain chart and give data insights on the chart}\"\n}\n\nINPUT: You will receive:\n- prompt (user question)\n- query (SQL used; context only)\n- tableText (newline-delimited JSON objects)\n\nTASK:\n1) Parse tableText into objects and detect available fields.\n2) Choose one sensible 2D chart from the fields present.\n3) Return only the single JSON object (matching schema) as the entire model output.\nUser conversation so far:\n${ $input.first().json.conversation_so_far }\n`;\nreturn [\n  {\n    json: {\n      prompt: s\n    }\n  }\n];\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        512,
+        80
+      ],
+      "id": "8417f2a0-0a9a-4612-8129-3a7c742284e7",
+      "name": "Add it to prompt1"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Handle empty or invalid input\nif (!items || !Array.isArray(items) || items.length === 0) {\n  return [{ json: { conversation_so_far: \"\" } }];\n}\n\n// Extract rows (supporting both raw and .json-wrapped items)\nconst rows = items.map(i => i.json ?? i).filter(r => r && r.role && r.content);\n\n// Sort by created_at if available\nrows.sort((a, b) => new Date(a.created_at || 0) - new Date(b.created_at || 0));\n\n// Build readable convo string (keep content raw)\nconst conversation = rows\n  .map(r => `${r.role.toUpperCase()}: ${r.content}`)\n  .join(\"\\n\\n\");\n\n// Return formatted result\nreturn [{ json: { conversation_so_far: conversation } }];\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        336,
+        80
+      ],
+      "id": "9b7ba8d9-17a7-4409-9bf2-43043c86ceb1",
+      "name": "Edit format of history1"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "5d96a051-d725-408d-a33b-381b535390a3",
+              "name": "prompt",
+              "value": "={{ $json.body.body.prompt }}",
+              "type": "string"
+            },
+            {
+              "id": "1cdde3a0-2823-4926-85e9-398803133cb9",
+              "name": "sessionId",
+              "value": "={{ $json.body.body.session_id }}",
+              "type": "string"
+            },
+            {
+              "id": "65d1bb1a-1301-4a8b-9fe2-ff3c4e446e80",
+              "name": "explanation",
+              "value": "={{ $json.body.body.explanation }}",
+              "type": "string"
+            },
+            {
+              "id": "c60b2654-fff3-4a88-b45a-7118f8fda80e",
+              "name": "query",
+              "value": "={{ $json.body.query }}",
+              "type": "string"
+            },
+            {
+              "id": "3cc124d8-b1d3-4b6b-a8c6-0b6e0e711bcf",
+              "name": "tableText",
+              "value": "={{ $json.body.body.tableText }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -80,
+        384
+      ],
+      "id": "5b3059ad-f7bf-4874-b645-1f59339f7433",
+      "name": "Extract input fields1"
+    },
+    {
+      "parameters": {
+        "jsCode": "// n8n Function Node\n\n// Get input data\nconst items = $input.all();\n\n// Transform each item\nreturn items.map(item => {\n  const data = item.json;\n\n  // Build the text\n  const combined = `User input: \"${data.prompt}\". Query generated to answer user: \"${data.query}\". Data generated from query: ${data.tableText}`;\n\n  return {\n    json: {\n      input: combined,\n      sessionId: data.sessionId || \"unknown-session\"\n    }\n  };\n});\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        512,
+        288
+      ],
+      "id": "c09eb0b8-7252-4caf-b9a1-7c6f75b75794",
+      "name": "edit json format"
+    },
+    {
+      "parameters": {
+        "mode": "combine",
+        "combineBy": "combineByPosition",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3.2,
+      "position": [
+        704,
+        160
+      ],
+      "id": "c3dc8d48-6954-4a2b-b978-dd7386f4b5ae",
+      "name": "Combine1"
+    },
+    {
+      "parameters": {
+        "jsCode": "// n8n Function node\nconst item = $input.first().json;\n\n// Gemini expects \"contents\" not \"messages\"\nconst body = {\n  contents: [\n    {\n      role: \"user\",\n      parts: [\n        {\n          text: `${item.prompt}\\n\\n${item.input}`\n        }\n      ]\n    }\n  ],\n  generationConfig: {\n    temperature: 0,\n    topK: 40,\n    topP: 0.95,\n    maxOutputTokens: 1024\n  }\n};\n\nreturn [{ json: body }];\nreturn [\n  {\n    out: body\n  }\n];\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        896,
+        80
+      ],
+      "id": "f78c5a10-2641-4eea-9a72-dfe63a714bc2",
+      "name": "OpenAI message format1"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ $json }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1104,
+        80
+      ],
+      "id": "685ca170-719b-4208-99f1-aa4d24f7c52a",
+      "name": "OpenAi API Request1"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "3d25b867-3ad3-4e58-9009-854eaba52cb7",
+              "name": "output",
+              "value": "={{ $json.candidates[0].content }}",
+              "type": "string"
+            },
+            {
+              "id": "955c89d4-c67e-4321-95f9-bc2205f5da15",
+              "name": "total_tokens",
+              "value": "={{ $json.usageMetadata.totalTokenCount }}",
+              "type": "number"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        1360,
+        80
+      ],
+      "id": "d011e0b0-d505-4abe-a68d-c70a224e2d13",
+      "name": "Extract output and tokens1"
+    },
+    {
+      "parameters": {
+        "jsCode": "\nconst sessionId = $input.first().json.sessionId;\nconst aiMsg = $input.first().json.output; // fixed variable name\n\nreturn [\n  {\n    json: {\n      role: \"Plot_Agent\",\n      content: aiMsg,\n      session_id: sessionId,\n    }\n  }\n];\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1280,
+        352
+      ],
+      "id": "2c67d882-40d8-4f60-b16f-4e30c4d563ef",
+      "name": "Reformat the JSON so it’s ready to insert into the convo history1"
+    },
+    {
+      "parameters": {
+        "mode": "combine",
+        "combineBy": "combineByPosition",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3.2,
+      "position": [
+        1088,
+        352
+      ],
+      "id": "4941c85c-5971-4b3a-afcd-b71c58f5eb70",
+      "name": "combine session_id and agent output"
+    },
+    {
+      "parameters": {
+        "mode": "chooseBranch"
+      },
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3.2,
+      "position": [
+        1696,
+        176
+      ],
+      "id": "1d0f6e05-1414-4b27-aa4a-a61d2b43bc82",
+      "name": "wait for all branches to send out input_1"
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.4,
+      "position": [
+        1888,
+        176
+      ],
+      "id": "be27a995-5046-41b7-90ce-7ae1101ad9d6",
+      "name": "Respond to Plot Agent API"
+    },
+    {
+      "parameters": {
+        "schema": {
+          "__rl": true,
+          "mode": "list",
+          "value": "public"
+        },
+        "table": {
+          "__rl": true,
+          "value": "messages",
+          "mode": "list",
+          "cachedResultName": "messages"
+        },
+        "columns": {
+          "mappingMode": "autoMapInputData",
+          "value": {
+            "session_id": "={{ $json.sessionId }}"
+          },
+          "matchingColumns": [
+            "id"
+          ],
+          "schema": [
+            {
+              "id": "role",
+              "displayName": "role",
+              "required": true,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "content",
+              "displayName": "content",
+              "required": true,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "id",
+              "displayName": "id",
+              "required": false,
+              "defaultMatch": true,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "session_id",
+              "displayName": "session_id",
+              "required": true,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "created_at",
+              "displayName": "created_at",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "dateTime",
+              "canBeUsedToMatch": true,
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        1472,
+        352
+      ],
+      "id": "9ccda784-bc06-4ece-8937-cdd85b191d1f",
+      "name": "Insert row in a convo history"
+    }
+  ],
+  "connections": {
+    "Plot Agent API": {
+      "main": [
+        [
+          {
+            "node": "Extract input fields1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "conversation history": {
+      "main": [
+        [
+          {
+            "node": "Edit format of history1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Add it to prompt1": {
+      "main": [
+        [
+          {
+            "node": "Combine1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Edit format of history1": {
+      "main": [
+        [
+          {
+            "node": "Add it to prompt1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract input fields1": {
+      "main": [
+        [
+          {
+            "node": "conversation history",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "combine session_id and agent output",
+            "type": "main",
+            "index": 1
+          },
+          {
+            "node": "edit json format",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "edit json format": {
+      "main": [
+        [
+          {
+            "node": "Combine1",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Combine1": {
+      "main": [
+        [
+          {
+            "node": "OpenAI message format1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenAI message format1": {
+      "main": [
+        [
+          {
+            "node": "OpenAi API Request1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenAi API Request1": {
+      "main": [
+        [
+          {
+            "node": "Extract output and tokens1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract output and tokens1": {
+      "main": [
+        [
+          {
+            "node": "wait for all branches to send out input_1",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "combine session_id and agent output",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Reformat the JSON so it’s ready to insert into the convo history1": {
+      "main": [
+        [
+          {
+            "node": "Insert row in a convo history",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "combine session_id and agent output": {
+      "main": [
+        [
+          {
+            "node": "Reformat the JSON so it’s ready to insert into the convo history1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "wait for all branches to send out input_1": {
+      "main": [
+        [
+          {
+            "node": "Respond to Plot Agent API",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Insert row in a convo history": {
+      "main": [
+        [
+          {
+            "node": "wait for all branches to send out input_1",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    }
+  }
+}
