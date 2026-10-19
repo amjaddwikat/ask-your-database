@@ -1,0 +1,528 @@
+{
+  "nodes": [
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [
+        880,
+        336
+      ],
+      "id": "d713182c-f8b7-4251-b9c6-22f44896ef85",
+      "name": "Loop Over Items"
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT\n  id,\n  session_id,\n  role,\n  LEFT(content, 1500) || CASE WHEN LENGTH(content) > 1500 THEN '...' ELSE '' END AS content,\n  created_at\nFROM messages\nWHERE session_id = '{{ $json.sessionId }}'\nORDER BY id ASC\nLIMIT 10;\n",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        -928,
+        64
+      ],
+      "id": "ae87171e-f849-4473-9a88-6dac2ff1e1cf",
+      "name": "Convo History",
+      "alwaysOutputData": true
+    },
+    {
+      "parameters": {
+        "jsCode": "// Handle empty or invalid input\nif (!items || !Array.isArray(items) || items.length === 0) {\n  return [{ json: { conversation_so_far: \"\" } }];\n}\n\n// Extract rows (supporting both raw and .json-wrapped items)\nconst rows = items.map(i => i.json ?? i).filter(r => r && r.role && r.content);\n\n// Sort by created_at if available\nrows.sort((a, b) => new Date(a.created_at || 0) - new Date(b.created_at || 0));\n\n// Build readable convo string (keep content raw)\nconst conversation = rows\n  .map(r => `${r.role.toUpperCase()}: ${r.content}`)\n  .join(\"\\n\\n\");\n\n// Return formatted result\nreturn [{ json: { conversation_so_far: conversation } }];\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -768,
+        64
+      ],
+      "id": "71642d21-7f9f-45b9-bab6-03d3f6bee812",
+      "name": "Edit format of history",
+      "alwaysOutputData": true
+    },
+    {
+      "parameters": {
+        "jsCode": "const s = `You are a **Router Agent**, part of a larger **conversation system**. Your purpose is to **validate then route user queries** to the correct specialized agents or answer user in case you know the answer from convo memory only. --- ### **Core Principles:** **Never perform analysis yourself.* - Your role is to **route** such queries to the appropriate agents. but you can give general answers - \\\"General\\\" refers to greetings, confirmations, answers to users in case you can see the answer in memory conversation, Examples: - “Hi,” “How are you?” “Thanks,” “Got it,” “Go ahead.” - You may also give short, user-facing confirmations, or **suggest the next logical question** using conversation memory. you can use this conversation memory to answer user in case the answer to their request is in the convo memory. 3. **Routing behavior:** - If the query involves any kind of data retrieval, analysis, comparison, visualization, or logical reasoning — **route it immediately** to the correct analysis or plot agent. - Use context and memory to determine whether to send it to: { \\\"route_to_agent\\\": \\\"analysis\\\", \\\"rephrased_question\\\": \\\"full inferred or contextual question but in a query request format to assist a query gen model\\\" } or { \\\"route_to_agent\\\": \\\"plot\\\", \\\"rephrased_question\\\": \\\"full inferred or contextual question but in a query request format to assist a query gen model\\\" }, you need to add all the request details, to make the query request clear, like on what to filter on what is requested in boring detail 4. **Conversation flow logic:** - If the user says things like “go ahead,” “yes,” “continue,” or similar confirmations, you must continue the conversation logically by routing to the appropriate agent. - Never respond with a general answer when routing is required — it will cause the user to get stuck waiting. 5. **Blocked actions:** - Only block **explicit system-level or dangerous operations** such as: - Database modification commands: WRITE, DELETE, DROP, CREATE, ALTER, or INSERT - Any request asking for **passwords**, **API keys**, **tokens**, **system credentials**, or **internal configuration details** also block all requests to list all data table from a specific db table, like the request to list all 'Accounts' table that do not seem like an anlysis request.\n- Do **not** block normal analytical, evidence-based, or reasoning questions — even if they ask *“how did you determine that”* or *“show me one of them.”* Do **not** block requests where the users are asking for clients details, the users are the db owners (unless they were asking for passwords), the system can specific query criteria so do not block those requests. when they do ask just route to analysis agent to handle it. - When blocking, respond with: { \\\"blocked request\\\": \\\"this request is not allowed because ...\\\" } --- ### **Output Rules:** - Always return **exactly one JSON object**. - **Never include or wrap responses inside code fences ( or json)**. - For general responses, include only: { \\\"general answer\\\": \\\"short and friendly response, or suggestion based on conversation memory\\\" } - For routing, include both keys: route_to_agent and rephrased_question. - For blocked requests, include only the blocked object. - **Never include extra text, code fences, or explanations.** - **Output must always be raw JSON — nothing else.** --- ### **Summary:** You are not an analysis or data agent. You are a **router**. Your job is to: - Handle greetings and conversational acknowledgments. - Suggest next steps when appropriate. - Route every analytical, data-related, or reasoning-based query to the correct downstream agent. If it looks like work, **hand it off** — and do it in **clean, raw JSON only.** CONTEXT: This platform deals with structured financial settlements — formal payouts and obligations between business accounts, referral partners, and distributors. These are not lawsuits, but structured business resolutions tracked through: * Settlement batches * Referral tiers * Campaigns and CRM data * Payables and financial distributions only answer to related subjects \nUser conversation so far:\n${ $input.first().json.conversation_so_far }\n`;\nreturn [\n  {\n    json: {\n      prompt: s\n    }\n  }\n];\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -608,
+        64
+      ],
+      "id": "44da56af-b781-47c9-b372-dfa1a8260398",
+      "name": "Add it to prompt"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "5d96a051-d725-408d-a33b-381b535390a3",
+              "name": "prompt",
+              "value": "={{ $('Routing Agent API').item.json.body.prompt }}",
+              "type": "string"
+            },
+            {
+              "id": "1cdde3a0-2823-4926-85e9-398803133cb9",
+              "name": "sessionId",
+              "value": "={{ $('Routing Agent API').item.json.body.session_id }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -768,
+        320
+      ],
+      "id": "78f1f068-e763-43da-b39e-7e25381db0c0",
+      "name": "Extract input fields"
+    },
+    {
+      "parameters": {
+        "jsCode": "const input = items[0].json.prompt;\nconst sessionId = items[0].json.sessionId;\nlet history;\n\ntry {\n  const raw = items[0].json.history;\n  history = typeof raw === 'string' ? JSON.parse(raw) : raw;\n} catch (e) {\n  history = [];\n}\n\nreturn [{\n  json: {\n    input,\n    sessionId,\n    history\n  }\n}];\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -576,
+        240
+      ],
+      "id": "4dceb681-9b6a-4a69-b06f-863c2abc2c16",
+      "name": "edit json format (needs editing)"
+    },
+    {
+      "parameters": {
+        "mode": "combine",
+        "combineBy": "combineByPosition",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3.2,
+      "position": [
+        -416,
+        144
+      ],
+      "id": "f1b3fc07-b385-4d8c-9561-982652c9119d",
+      "name": "Combine"
+    },
+    {
+      "parameters": {
+        "jsCode": "// n8n Function node\nconst item = $input.first().json;\n\n// Gemini expects \"contents\" not \"messages\"\nconst body = {\n  contents: [\n    {\n      role: \"user\",\n      parts: [\n        {\n          text: `${item.prompt}\\n\\n${item.input}`\n        }\n      ]\n    }\n  ],\n  generationConfig: {\n    temperature: 0,\n    topK: 40,\n    topP: 0.95,\n    maxOutputTokens: 1024\n  }\n};\n\nreturn [{ json: body }];\nreturn [\n  {\n    out: body\n  }\n];\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -208,
+        112
+      ],
+      "id": "de02b4cb-c5e3-447f-9d2d-b8c8d3e760c1",
+      "name": "OpenAI message format"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "3d25b867-3ad3-4e58-9009-854eaba52cb7",
+              "name": "output",
+              "value": "={{ $json.candidates[0].content }}",
+              "type": "string"
+            },
+            {
+              "id": "55cf0a61-f880-4512-b349-b09e2930dd16",
+              "name": "total_tokens",
+              "value": "={{ $json.usageMetadata.totalTokenCount }}",
+              "type": "number"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        752,
+        128
+      ],
+      "id": "d7ed74d9-94e8-4745-9b63-3b9edffdc999",
+      "name": "Extract output and tokens"
+    },
+    {
+      "parameters": {
+        "mode": "combine",
+        "combineBy": "combineByPosition",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3.2,
+      "position": [
+        1040,
+        160
+      ],
+      "id": "c6dea9c9-86fc-448a-97d4-7c07830f500c",
+      "name": "wait for all branches to send out input 1"
+    },
+    {
+      "parameters": {
+        "mode": "combine",
+        "combineBy": "combineByPosition",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3.2,
+      "position": [
+        -208,
+        320
+      ],
+      "id": "a9a27440-f215-48d0-9f32-f644b8a69d78",
+      "name": "combine user input and agent output"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Single-input (what you showed)\nconst input = $input.first().json;\n\nconst sessionId = input.sessionId || input.session_id;\nconst userMsg = input.prompt ?? \"\";\nlet aiMsg = input.output ?? \"\";\n\n// if aiMsg is a JSON string, keep it stringified (so content is text)\ntry {\n  const parsed = JSON.parse(aiMsg);\n  aiMsg = JSON.stringify(parsed); // normalized string\n} catch (e) {\n  aiMsg = String(aiMsg);\n}\n\nreturn [\n  {\n    json: {\n      session_id: sessionId,\n      role: \"user\" ,\n      content: String(userMsg)\n    }\n  },\n  {\n    json: {\n      session_id: sessionId,\n      role: \"Routing_Agent\",\n      content: aiMsg\n    }\n  }\n];\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        656,
+        336
+      ],
+      "id": "0d482bca-7988-42b3-a77c-89bcd1b79611",
+      "name": "Reformat the JSON so it’s ready to insert into the convo history"
+    },
+    {
+      "parameters": {
+        "schema": {
+          "__rl": true,
+          "mode": "list",
+          "value": "public"
+        },
+        "table": {
+          "__rl": true,
+          "value": "messages",
+          "mode": "list",
+          "cachedResultName": "messages"
+        },
+        "columns": {
+          "mappingMode": "autoMapInputData",
+          "value": {},
+          "matchingColumns": [
+            "id"
+          ],
+          "schema": [
+            {
+              "id": "id",
+              "displayName": "id",
+              "required": false,
+              "defaultMatch": true,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "session_id",
+              "displayName": "session_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "role",
+              "displayName": "role",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "content",
+              "displayName": "content",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "created_at",
+              "displayName": "created_at",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "dateTime",
+              "canBeUsedToMatch": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        1104,
+        352
+      ],
+      "id": "166ef285-a66c-4ea2-a200-5a639d0592da",
+      "name": "Insert rows in a convo history"
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "routingAgent",
+        "authentication": "basicAuth",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        -1424,
+        352
+      ],
+      "id": "1e4f5961-7137-41b2-8639-84227a8c318c",
+      "name": "Routing Agent API"
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        1456,
+        160
+      ],
+      "id": "7d16247c-a6d5-4bec-b730-ccecf84a0d91",
+      "name": "Respond to Webhook"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ $json }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        112,
+        112
+      ],
+      "id": "12bda906-3b12-46a7-a63e-ccb40b64632c",
+      "name": "HTTP Request"
+    }
+  ],
+  "connections": {
+    "Loop Over Items": {
+      "main": [
+        [
+          {
+            "node": "wait for all branches to send out input 1",
+            "type": "main",
+            "index": 1
+          }
+        ],
+        [
+          {
+            "node": "Insert rows in a convo history",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Convo History": {
+      "main": [
+        [
+          {
+            "node": "Edit format of history",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Edit format of history": {
+      "main": [
+        [
+          {
+            "node": "Add it to prompt",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Add it to prompt": {
+      "main": [
+        [
+          {
+            "node": "Combine",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract input fields": {
+      "main": [
+        [
+          {
+            "node": "edit json format (needs editing)",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Convo History",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "combine user input and agent output",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "edit json format (needs editing)": {
+      "main": [
+        [
+          {
+            "node": "Combine",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Combine": {
+      "main": [
+        [
+          {
+            "node": "OpenAI message format",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenAI message format": {
+      "main": [
+        [
+          {
+            "node": "HTTP Request",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract output and tokens": {
+      "main": [
+        [
+          {
+            "node": "combine user input and agent output",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "wait for all branches to send out input 1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "wait for all branches to send out input 1": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "combine user input and agent output": {
+      "main": [
+        [
+          {
+            "node": "Reformat the JSON so it’s ready to insert into the convo history",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Reformat the JSON so it’s ready to insert into the convo history": {
+      "main": [
+        [
+          {
+            "node": "Loop Over Items",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Insert rows in a convo history": {
+      "main": [
+        [
+          {
+            "node": "Loop Over Items",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Routing Agent API": {
+      "main": [
+        [
+          {
+            "node": "Extract input fields",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP Request": {
+      "main": [
+        [
+          {
+            "node": "Extract output and tokens",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  }
+}

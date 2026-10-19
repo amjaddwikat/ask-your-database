@@ -1,0 +1,1560 @@
+{
+  "nodes": [
+    {
+      "parameters": {
+        "mode": "combine",
+        "combineBy": "combineByPosition",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3.2,
+      "position": [
+        6816,
+        1088
+      ],
+      "id": "5b5b46f6-018a-4b5f-ac26-2116138c4755",
+      "name": "Merge",
+      "alwaysOutputData": true
+    },
+    {
+      "parameters": {
+        "mode": "raw",
+        "jsonOutput": "={\n  \"body\": {{ $json.body || [] }}\n}\n",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        5840,
+        1232
+      ],
+      "id": "6d9d7506-c631-43e7-8944-2ecb01e18efe",
+      "name": "Edit Fields10",
+      "alwaysOutputData": false
+    },
+    {
+      "parameters": {
+        "jsCode": "// Flatten all rows, focusing only on meaningful data inside body/results\nconst allRows = items.flatMap(item => {\n  const data = item.json;\n\n  // if body.results exists and is an array, extract those rows\n  if (data.body && Array.isArray(data.body.results)) {\n    return data.body.results.map(obj => JSON.stringify(obj));\n  }\n\n  // if body itself is an array, flatten it\n  if (Array.isArray(data.body)) {\n    return data.body.map(obj => JSON.stringify(obj));\n  }\n\n  // if body is an object with useful fields (not nested results)\n  if (data.body && typeof data.body === 'object') {\n    return [JSON.stringify(data.body)];\n  }\n\n  // fallback: stringify the whole thing\n  return [JSON.stringify(data)];\n});\n\nconst rows = allRows.join('\\n');\n\nreturn [{ json: { tableText: rows } }];\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        6080,
+        1264
+      ],
+      "id": "efde2bf0-6aae-4e58-bd63-85644b8b47e9",
+      "name": "Code5"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "760f5430-2f9b-4cf5-91c0-96750d426d96",
+              "leftValue": "={{ $json.body.error }}",
+              "rightValue": 200,
+              "operator": {
+                "type": "string",
+                "operation": "exists",
+                "singleValue": true
+              }
+            },
+            {
+              "id": "c7a862ee-d40a-442d-9523-54a0bb4df0cf",
+              "leftValue": "={{ $json.body[0].ErrorMessage }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "exists",
+                "singleValue": true
+              }
+            },
+            {
+              "id": "6d2198d2-8a3e-4753-9144-7d726adf8b49",
+              "leftValue": "={{ $json[\"error\"][\"message\"] }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "exists",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "or"
+        },
+        "looseTypeValidation": true,
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        5424,
+        1232
+      ],
+      "id": "3548a78d-3c7e-4268-b979-02e44e35e60c",
+      "name": "If4"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "381c320d-c05b-45c5-8295-75354e201f8b",
+              "name": "query",
+              "value": "={{ $json.query }}",
+              "type": "string"
+            }
+          ]
+        },
+        "includeOtherFields": "={{ false }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        3360,
+        688
+      ],
+      "id": "37f8061f-f9f9-4a83-9e26-9dd9db05de62",
+      "name": "Edit Fields6"
+    },
+    {
+      "parameters": {
+        "mode": "combine",
+        "combineBy": "combineByPosition",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3.2,
+      "position": [
+        5040,
+        224
+      ],
+      "id": "8ef23666-e651-4d59-b116-5c5e81b7feb0",
+      "name": "Merge3",
+      "alwaysOutputData": true
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "760f5430-2f9b-4cf5-91c0-96750d426d96",
+              "leftValue": "={{ $json.query }}",
+              "rightValue": 200,
+              "operator": {
+                "type": "string",
+                "operation": "notEmpty",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "looseTypeValidation": true,
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        2976,
+        624
+      ],
+      "id": "5d0c0aee-812c-4910-a33a-bb536b69bf2f",
+      "name": "If"
+    },
+    {
+      "parameters": {
+        "respondWith": "allIncomingItems",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.4,
+      "position": [
+        4208,
+        -400
+      ],
+      "id": "df03419b-eaf0-4340-99de-fce9f3edd19a",
+      "name": "Respond to Webhook2"
+    },
+    {
+      "parameters": {
+        "jsCode": "// n8n Function Node\n// Merge fields from incoming item into one expressive `input` string.\n// Outputs: [{ json: { input: \"...\", original: { ... } } }, ...]\n\n// safe getter\nfunction g(obj, keys) {\n  for (const k of keys) {\n    if (obj && Object.prototype.hasOwnProperty.call(obj, k) && obj[k] !== undefined && obj[k] !== null) {\n      return obj[k];\n    }\n  }\n  return \"\";\n}\n\nconst items = $input.all();\n\nreturn items.map(item => {\n  const d = item.json || {};\n\n  const convo = g(d, [\"conversation_so_far\", \"conversationSoFar\", \"conversation\"]);\n  const userNext = g(d, [\"output\", \"user_output\", \"user_input\"]);\n  const rephrased = g(d, [\"rephrased_question\", \"rephrasedQuestion\", \"rephrased\"]);\n  const rulesArr = d.relevant_rules || d.relevantRules || d.rules || [];\n\n  // ensure rules is a string (join array if needed)\n  const rules = Array.isArray(rulesArr) ? rulesArr.join(\"\\n- \") : (rulesArr || \"\");\n\n  const parts = [];\n\n  parts.push(`User's question (raw): ${userNext || \"(none)\"}\\n`);\n  parts.push(`User's question (rephrased): ${rephrased || \"(none)\"}\\n`);\n\n  if (rules) {\n    parts.push(`Relevant rules / guidance:\\n- ${rules}`);\n  } else {\n    parts.push(\"Relevant rules / guidance: (none)\");\n  }\n  parts.push(`Conversation so far:\\n${convo || \"(no prior conversation)\"}\\n`);\n\n  parts.push(\"\\nAuto-note: Use the conversation context above plus the rules to answer the rephrased question precisely. Prioritize filing status logic when evaluating unresolved conflicts.\");\n\n  const combined = parts.join(\"\\n\");\n\n  return {\n    json: {\n      input: combined\n    }\n  };\n});\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1216,
+        608
+      ],
+      "id": "2f4f3fb6-9ab4-4c0e-8ce5-40bf4511306e",
+      "name": "Code10"
+    },
+    {
+      "parameters": {
+        "schema": {
+          "__rl": true,
+          "mode": "list",
+          "value": "public"
+        },
+        "table": {
+          "__rl": true,
+          "value": "chatmessage",
+          "mode": "list",
+          "cachedResultName": "chatmessage"
+        },
+        "columns": {
+          "mappingMode": "autoMapInputData",
+          "value": {},
+          "matchingColumns": [
+            "id"
+          ],
+          "schema": [
+            {
+              "id": "role",
+              "displayName": "role",
+              "required": true,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "content",
+              "displayName": "content",
+              "required": true,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "id",
+              "displayName": "id",
+              "required": false,
+              "defaultMatch": true,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "session_id",
+              "displayName": "session_id",
+              "required": true,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "created_at",
+              "displayName": "created_at",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "dateTime",
+              "canBeUsedToMatch": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        3440,
+        -336
+      ],
+      "id": "1bd3aa7a-2636-4ac5-8bee-644625fb9d95",
+      "name": "Insert rows in a table",
+      "alwaysOutputData": true
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "2c2d1422-c15a-4604-8074-7580d3be7581",
+              "name": "session_id",
+              "value": "={{ $json.body.session_id }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        528,
+        96
+      ],
+      "id": "e2e3e3a3-ff13-49a2-a004-3e379628cca9",
+      "name": "Edit Fields11"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Function node — insert-ready record with query \"\" and explanation inside content\nconst raw = $input.first().json;\nconst dataArray = Array.isArray(raw) ? raw : [raw];\n\n// Grab first explanation or empty\nconst explanation =\n  dataArray.map(o => o.explanation).find(v => v && v.trim()) || \"\";\n\n// Set role (default DB_Agent)\nconst role = $env.DEFAULT_ROLE || \"DB_Agent_Exp\";\n\n// Build content string with empty query and explanation\nconst content = `query: \"\"\\nexplanation: ${explanation}`;\n\n// Build final payload\nreturn [{\n  json: {\n    role,\n    content\n  }\n}];\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        3120,
+        160
+      ],
+      "id": "8b8a7a2c-8717-489a-8bf8-ff2aa108b765",
+      "name": "Code9"
+    },
+    {
+      "parameters": {
+        "respondWith": "allIncomingItems",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.4,
+      "position": [
+        7904,
+        176
+      ],
+      "id": "23432183-f4ab-4a1b-8539-bd869354f40a",
+      "name": "Respond to Webhook7"
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "sqlAgent",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        -80,
+        1120
+      ],
+      "id": "ce9afafe-23bf-40d0-86da-2b1b9c16cb54",
+      "name": "Webhook8"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "24642be3-da7c-40a7-afd8-d8e7506586a3",
+              "name": "output",
+              "value": "={{ $json.body.prompt }}",
+              "type": "string"
+            },
+            {
+              "id": "8a73db09-3fc2-4044-bdcc-d1a1380c6428",
+              "name": "rephrased_question",
+              "value": "={{ $json.body.rephrased_question }}",
+              "type": "string"
+            },
+            {
+              "id": "1d7d91e9-fd59-4d70-a9b8-31692e043670",
+              "name": "=relevant_rules",
+              "value": "={{ $json.body.relevant_rules }}",
+              "type": "array"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        624,
+        736
+      ],
+      "id": "7f59212a-2b28-49fc-95af-f9d689db13dc",
+      "name": "Edit Fields12"
+    },
+    {
+      "parameters": {
+        "schema": {
+          "__rl": true,
+          "mode": "list",
+          "value": "public"
+        },
+        "table": {
+          "__rl": true,
+          "value": "messages",
+          "mode": "list",
+          "cachedResultName": "messages"
+        },
+        "columns": {
+          "mappingMode": "autoMapInputData",
+          "value": {
+            "session_id": "={{ $json.session_id }}",
+            "message": "={{ $json.message }}"
+          },
+          "matchingColumns": [
+            "id"
+          ],
+          "schema": [
+            {
+              "id": "id",
+              "displayName": "id",
+              "required": false,
+              "defaultMatch": true,
+              "display": true,
+              "type": "number",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "session_id",
+              "displayName": "session_id",
+              "required": true,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "message",
+              "displayName": "message",
+              "required": true,
+              "defaultMatch": false,
+              "display": true,
+              "type": "object",
+              "canBeUsedToMatch": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        7472,
+        160
+      ],
+      "id": "8c213375-2d3d-4cdb-8a81-05328441355a",
+      "name": "Insert rows in a table1",
+      "alwaysOutputData": true
+    },
+    {
+      "parameters": {
+        "jsCode": "// Function node — merges input fields into one message content\nconst raw = $input.first().json;\n\n// Handle array or single object\nconst dataArray = Array.isArray(raw) ? raw : [raw];\n\nconst content = dataArray\n  .map(obj =>\n    Object.entries(obj)\n      .filter(([key]) => key !== \"total_tokens\") // 🚫 skip total_tokens\n      .map(([key, val]) => `${key}: ${typeof val === \"object\" ? JSON.stringify(val) : val}`)\n      .join(\"\\n\")\n  )\n  .join(\"\\n\\n---\\n\\n\");\n\n\n// Build final payload with fixed role\nconst payload = {\n  role: \"DB_Agent\",\n  content\n};\n\n// Return as json\nreturn [{ json: payload }];\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        7024,
+        864
+      ],
+      "id": "450b9838-3a97-47af-a09e-a7c896d84140",
+      "name": "Code13"
+    },
+    {
+      "parameters": {
+        "mode": "chooseBranch",
+        "useDataOfInput": 2
+      },
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3.2,
+      "position": [
+        7728,
+        224
+      ],
+      "id": "bade255f-a13b-4294-b260-c2fd2fc3a877",
+      "name": "Merge12"
+    },
+    {
+      "parameters": {
+        "jsCode": "\nconst raw = $input.first().json.output ?? null;\n\nif (!raw || raw.trim() === \"\") {\n  return [{ json: { query: \"\", explanation: \"no explanation available\" } }];\n}\n\n// Strip markdown code fences if present\nconst cleaned = raw\n  .trim()\n  .replace(/^```json\\s*/i, '')\n  .replace(/^```\\s*/i, '')\n  .replace(/```\\s*$/i, '')\n  .trim();\n\nlet parsed;\ntry {\n  parsed = JSON.parse(cleaned);\n} catch (err) {\n  return [{ json: { query: \"failed to parse JSON\", explanation: `JSON parse error: ${err.message}` } }];\n}\n\nconst query = parsed.query?.trim() ?? \"\";\nconst explanation = parsed.explanation?.trim() ?? \"no explanation provided\";\nconst total_tokens = $input.first().json.total_tokens || 0;\nconst cleanedQuery = query.endsWith(';') ? query.slice(0, -1) : query;\n\nreturn [\n  {\n    json: {\n      query: cleanedQuery,\n      explanation,\n      total_tokens\n    },\n  },\n];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2576,
+        432
+      ],
+      "id": "711dca40-21c5-4f9d-b5cd-ce338e6a32d7",
+      "name": "Code"
+    },
+    {
+      "parameters": {
+        "mode": "combine",
+        "combineBy": "combineByPosition",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3.2,
+      "position": [
+        7264,
+        80
+      ],
+      "id": "696c4dff-334f-4e17-982f-dd7561c599a2",
+      "name": "Merge16"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "50be1926-eba6-4db1-a3e3-948807b44bfd",
+              "name": "query",
+              "value": "={{ $json.query }}",
+              "type": "string"
+            },
+            {
+              "id": "b1d8cc04-678e-4a56-bf4f-8538ebdcbab9",
+              "name": "explanation",
+              "value": "={{ $json.explanation }}",
+              "type": "string"
+            },
+            {
+              "id": "93cc569f-6eae-4228-bba8-2416daeefeca",
+              "name": "total_tokens",
+              "value": "={{ $json.total_tokens }}",
+              "type": "number"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        5872,
+        976
+      ],
+      "id": "1ac797ad-c9eb-487a-a863-99d46ddb9e2d",
+      "name": "Edit Fields8"
+    },
+    {
+      "parameters": {
+        "jsCode": "return items.map(item => {\n  const errObj = item.json.error || null;\n  const query = item.json.query ?? null;\n  const explanation = item.json.explanation ?? null;\n  const total_tokens = item.json.total_tokens ?? 0;\n\n  // grab only the message string if exists\n  const error = errObj?.message ?? null;\n\n  return {\n    json: {\n      error,\n      query,\n      explanation,\n      total_tokens\n    }\n  };\n});\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        5536,
+        608
+      ],
+      "id": "9687ba98-c0fb-4bb2-b065-f7298c9620fa",
+      "name": "Code1"
+    },
+    {
+      "parameters": {
+        "mode": "combine",
+        "combineBy": "combineByPosition",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3.2,
+      "position": [
+        3280,
+        -160
+      ],
+      "id": "0f9917ee-5657-4f9e-be23-53ef0ff52a6b",
+      "name": "Merge17"
+    },
+    {
+      "parameters": {
+        "mode": "chooseBranch"
+      },
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3.2,
+      "position": [
+        3920,
+        -432
+      ],
+      "id": "a9889827-35d4-4355-8c91-f8ea9a057366",
+      "name": "Merge5"
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT\n  id,\n  session_id,\n  role,\n  LEFT(content, 1500) || CASE WHEN LENGTH(content) > 1500 THEN '...' ELSE '' END AS content,\n  created_at\nFROM messages\nWHERE session_id = '{{ $json.body.session_id }}'\nORDER BY id ASC\nLIMIT 10;\n",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        464,
+        464
+      ],
+      "id": "46a29346-d63f-415f-8b22-8e24d1693454",
+      "name": "Execute a SQL query4",
+      "alwaysOutputData": true
+    },
+    {
+      "parameters": {
+        "jsCode": "// Handle empty or invalid input\nif (!items || !Array.isArray(items) || items.length === 0) {\n  return [{ json: { conversation_so_far: \"\" } }];\n}\n\n// Extract rows (supporting both raw and .json-wrapped items)\nconst rows = items.map(i => i.json ?? i).filter(r => r && r.role && r.content);\n\n// Sort by created_at if available\nrows.sort((a, b) => new Date(a.created_at || 0) - new Date(b.created_at || 0));\n\n// Build readable convo string (keep content raw)\nconst conversation = rows\n  .map(r => `${r.role.toUpperCase()}: ${r.content}`)\n  .join(\"\\n\\n\");\n\n// Return formatted result\nreturn [{ json: { conversation_so_far: conversation } }];\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        704,
+        448
+      ],
+      "id": "b2ff19a5-f166-4366-832d-7bd72d87cebf",
+      "name": "Code21"
+    },
+    {
+      "parameters": {
+        "mode": "combine",
+        "combineBy": "combineByPosition",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3.2,
+      "position": [
+        1040,
+        624
+      ],
+      "id": "553f1f44-d773-4c76-bdb2-249b7279ee9d",
+      "name": "Merge21"
+    },
+    {
+      "parameters": {
+        "jsCode": "// n8n Function node\nconst item = $input.first().json;\n\n// Gemini expects \"contents\" not \"messages\"\nconst body = {\n  contents: [\n    {\n      role: \"user\",\n      parts: [\n        {\n          text: `${item.prompt}\\n\\n${item.input}`\n        }\n      ]\n    }\n  ],\n  generationConfig: {\n    temperature: 0,\n    topK: 40,\n    topP: 0.95,\n    maxOutputTokens: 1024\n  }\n};\n\nreturn [{ json: body }];\nreturn [\n  {\n    out: body\n  }\n];\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1584,
+        640
+      ],
+      "id": "32afaae9-2727-4b2e-bef4-b9ed45b2734a",
+      "name": "Code34"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "9911bf6f-9408-4034-8ae8-1ef0d91caa0c",
+              "name": "output",
+              "value": "={{ $json.candidates[0].content.parts[0].text }}",
+              "type": "string"
+            },
+            {
+              "id": "141b665a-b006-4d82-a0b1-b250268f012a",
+              "name": "total_tokens",
+              "value": "={{ $json.usageMetadata.totalTokenCount }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        2352,
+        512
+      ],
+      "id": "6286ec77-db1a-470b-88ae-032b964aaabd",
+      "name": "Edit Fields22"
+    },
+    {
+      "parameters": {
+        "mode": "combine",
+        "combineBy": "combineByPosition",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3.2,
+      "position": [
+        1440,
+        656
+      ],
+      "id": "5d5d8d32-51ea-4298-8d7a-e60ae36e448b",
+      "name": "Merge24"
+    },
+    {
+      "parameters": {
+        "jsCode": "const s = `**SYSTEM PROMPT**\nYou are a **DB SQL Query Generator Assistant**. Your job is to generate **MS SQL queries** that provides other agents the enough data the be able to answer the user reques. you might get analysis requests or visulisations requests, gnerate a query that will help retrive the needed data for other agents to be able to handel user requests.\nyou will recive user request, and related rules that might help generate the query better.\nwhile generating a query never use 'asc' as alias to as a table name\n\n\n### **Responsibilities**\n\n1. Use the provided rules only if they affect the query logic.\n2. Generate a valid **MS SQL query** that satisfies the user’s question using the available schema, relationships, and data samples, If you receive a plot or visualization request, you need to generate the query that would help retrieve the data for the plot.\n\nyou have access to data sample file, where each column in each table so you can have an idea of what to filter on.\n3. return the tokens number\n\n### **Input**\n\n* User question\n* List of query rules\n* Schema below\n\n### **Output**\n\nReturn a single JSON object ONLY:\n\n{\n  \"query\": \"MS SQL query\",\n  \"explanation\": \"explain the query in natural language\",\n  \"tokens number\": \"return the tokens number\"\n}\n\nIMPORTANT:\n- The JSON MUST contain a field named EXACTLY \"query\"\n- Do NOT use \"sql\"\n- Do NOT wrap output with json or backticks\n- Do NOT include any extra text\n\n---\n\n### **Prompt Rules**\n\n* Do **not invent** tables, columns, or values.\n* only use tables and columns from the schema below\n* Always fully qualify tables with their **schema name**\n* Always use **table aliases** but never use sql keywords like \"ASC\"\n* Generated query must be **syntactically valid MS SQL**\n* Ensure correct joins using relationships\n* If a filter value is missing → return empty query \"\" and ask for it in explanation\n* If question is irrelevant → return empty query \"\" and explain why\n\n---\n\n### **Schema**\n\nDatabase: telecom_dw\n\nTable: dimcustomer\nColumns:\n- CustomerID (int)\n- Age (int)\n- City (varchar)\n- Region (varchar)\n- ContractType (varchar)\n- JoinDate (date)\n\nTable: dimdate\nColumns:\n- DateID (int)\n- FullDate (date)\n- Day (int)\n- Month (int)\n- Quarter (int)\n- Year (int)\n\nTable: dimservice\nColumns:\n- ServiceID (int)\n- ServiceType (varchar)\n- PlanType (varchar)\n\nDatabase: factbilling\n\nTable: factbilling\nColumns:\n- BillingID (int)\n- CustomerID (int)\n- DateID (int)\n- ServiceID (int)\n- UsageMinutes (int)\n- BillAmount (decimal)\n- PaymentStatus (varchar)\n- LatePaymentFlag (bit)\n- PaymentDelayDays (int)\n\n---\n\n### **Relationships**\n\nfactbilling.factbilling.CustomerID -> telecom_dw.dimcustomer.CustomerID  \nfactbilling.factbilling.DateID -> telecom_dw.dimdate.DateID  \nfactbilling.factbilling.ServiceID -> telecom_dw.dimservice.ServiceID  \n\n---\n\n### **Examples**\n\n1. What is the total revenue per month?\n\nSELECT d.Year, d.Month, SUM(f.BillAmount) AS Revenue\nFROM factbilling.factbilling f\nINNER JOIN telecom_dw.dimdate d ON f.DateID = d.DateID\nGROUP BY d.Year, d.Month\n\n\n2. Top 5 customers by usage minutes\n\nSELECT TOP 5 c.CustomerID, SUM(f.UsageMinutes) AS TotalUsage\nFROM factbilling.factbilling f\nINNER JOIN telecom_dw.dimcustomer c ON f.CustomerID = c.CustomerID\nGROUP BY c.CustomerID\nORDER BY TotalUsage DESC\n\n\n3. Number of late payments per region\n\nSELECT c.Region, COUNT(*) AS LatePayments\nFROM factbilling.factbilling f\nINNER JOIN telecom_dw.dimcustomer c ON f.CustomerID = c.CustomerID\nWHERE f.LatePaymentFlag = 1\nGROUP BY c.Region\n\n\n4. Average bill amount per service type\n\nSELECT s.ServiceType, AVG(f.BillAmount) AS AvgBill\nFROM factbilling.factbilling f\nINNER JOIN telecom_dw.dimservice s ON f.ServiceID = s.ServiceID\nGROUP BY s.ServiceType\n\n\n5. Monthly average payment delay\n\nSELECT d.Year, d.Month, AVG(f.PaymentDelayDays) AS AvgDelay\nFROM factbilling.factbilling f\nINNER JOIN telecom_dw.dimdate d ON f.DateID = d.DateID\nGROUP BY d.Year, d.Month\n\n`;\nreturn [\n  {\n    json: {\n      prompt: s\n    }\n  }\n];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        992,
+        880
+      ],
+      "id": "0159101d-3893-49a3-9661-33cc37f002bb",
+      "name": "Code35"
+    },
+    {
+      "parameters": {
+        "mode": "chooseBranch"
+      },
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3.2,
+      "position": [
+        6096,
+        416
+      ],
+      "id": "98a6aea4-5345-4838-aff3-0c9389751f68",
+      "name": "Merge22"
+    },
+    {
+      "parameters": {
+        "schema": {
+          "__rl": true,
+          "mode": "list",
+          "value": "public"
+        },
+        "table": {
+          "__rl": true,
+          "value": "messages",
+          "mode": "list",
+          "cachedResultName": "messages"
+        },
+        "columns": {
+          "mappingMode": "autoMapInputData",
+          "value": {
+            "session_id": "={{ $json.session_id }}"
+          },
+          "matchingColumns": [
+            "id"
+          ],
+          "schema": [
+            {
+              "id": "role",
+              "displayName": "role",
+              "required": true,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "content",
+              "displayName": "content",
+              "required": true,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "id",
+              "displayName": "id",
+              "required": false,
+              "defaultMatch": true,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "session_id",
+              "displayName": "session_id",
+              "required": true,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "created_at",
+              "displayName": "created_at",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "dateTime",
+              "canBeUsedToMatch": true,
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        5952,
+        560
+      ],
+      "id": "08b6625b-7902-4abd-a92b-c78e80b4eb75",
+      "name": "Insert rows in a table7",
+      "alwaysOutputData": true
+    },
+    {
+      "parameters": {
+        "jsCode": "const raw = $input.first().json;\nconst dataArray = Array.isArray(raw) ? raw : [raw];\n\n// Grab fields safely\nconst first = dataArray[0] || {};\nconst query = first.query || \"\";\nconst error = first.error || \"\";\nconst explanation = first.explanation || \"\";\n\n// Set role (default DB_Agent)\nconst role = $env.DEFAULT_ROLE || \"DB_Agent\";\n\n// Merge all into one content block\nconst content = `query: \"${query}\"\\nerror: ${error}\\nexplanation: ${explanation}`;\n\n// Build final payload\nconst payload = {\n  role,\n  content\n};\n\n// Return top-level json so DB node can insert directly\nreturn [{ json: payload }];\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        5664,
+        240
+      ],
+      "id": "ff857dec-8df1-40e1-ba00-908ffdecf4c9",
+      "name": "Code22"
+    },
+    {
+      "parameters": {
+        "mode": "combine",
+        "combineBy": "combineByPosition",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3.2,
+      "position": [
+        5808,
+        400
+      ],
+      "id": "ddbfe2ff-6fd6-4f97-8eb2-73e7dbfe04f0",
+      "name": "Merge27"
+    },
+    {
+      "parameters": {
+        "mode": "combine",
+        "combineBy": "combineByPosition",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3.2,
+      "position": [
+        3616,
+        432
+      ],
+      "id": "a9346c5a-b17b-4f3e-9c36-e5f68696da65",
+      "name": "Merge2"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "8ef098a1-6dc2-4391-9e87-419d4f6f8c20",
+              "name": "authorization",
+              "value": "={{ $json.headers.authorization }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        704,
+        1168
+      ],
+      "id": "3a6c65fe-0d8a-47ac-b534-5cb5150f4fad",
+      "name": "Edit Fields"
+    },
+    {
+      "parameters": {
+        "respondWith": "allIncomingItems",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.4,
+      "position": [
+        6320,
+        432
+      ],
+      "id": "0c674546-3dcc-4352-bca8-49d9f51ff52b",
+      "name": "Respond to Webhook1"
+    },
+    {
+      "parameters": {
+        "content": "",
+        "height": 2096,
+        "width": 496
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        -160,
+        -592
+      ],
+      "typeVersion": 1,
+      "id": "e8c4a93e-1763-47c5-b1cf-76e6b097913c",
+      "name": "Sticky Note"
+    },
+    {
+      "parameters": {
+        "content": "",
+        "height": 2080,
+        "width": 448,
+        "color": 4
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        400,
+        -592
+      ],
+      "typeVersion": 1,
+      "id": "a701b18e-166c-4513-a983-af806339360d",
+      "name": "Sticky Note1"
+    },
+    {
+      "parameters": {
+        "content": "",
+        "height": 2048,
+        "width": 1556,
+        "color": 3
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        912,
+        -592
+      ],
+      "typeVersion": 1,
+      "id": "5da4fbbc-9505-48ec-8d57-3def4f07a5fc",
+      "name": "Sticky Note2"
+    },
+    {
+      "parameters": {
+        "content": "",
+        "height": 2032,
+        "width": 288,
+        "color": 5
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        2512,
+        -592
+      ],
+      "typeVersion": 1,
+      "id": "151fa690-14ec-4331-a89c-a58583674648",
+      "name": "Sticky Note3"
+    },
+    {
+      "parameters": {
+        "content": "",
+        "height": 2032,
+        "width": 1616,
+        "color": 6
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        2864,
+        -608
+      ],
+      "typeVersion": 1,
+      "id": "f2f29065-36cd-4ea3-bdfb-91a7458483e3",
+      "name": "Sticky Note4"
+    },
+    {
+      "parameters": {
+        "content": "",
+        "height": 2032,
+        "width": 624
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        4544,
+        -624
+      ],
+      "typeVersion": 1,
+      "id": "ef101b1b-9a30-4e00-91bd-fb35b869772d",
+      "name": "Sticky Note5"
+    },
+    {
+      "parameters": {
+        "content": "",
+        "height": 2064,
+        "width": 1312,
+        "color": 5
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        5264,
+        -640
+      ],
+      "typeVersion": 1,
+      "id": "312a50fb-b08f-4201-96c8-fcee4b7acbc5",
+      "name": "Sticky Note6"
+    },
+    {
+      "parameters": {
+        "content": "",
+        "height": 1984,
+        "width": 1456,
+        "color": 4
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        6656,
+        -608
+      ],
+      "typeVersion": 1,
+      "id": "50cca308-25ad-4291-8fb9-d31497005274",
+      "name": "Sticky Note7"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://127.0.0.1:8000/api/v1/query",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            },
+            {
+              "name": "x-api-key",
+              "value": "={{ $env.DB_API_KEY }}"
+            },
+            {
+              "name": "Authorization",
+              "value": "={{ $json.authorization }}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "query",
+              "value": "={{ $json.query }}"
+            }
+          ]
+        },
+        "options": {
+          "response": {
+            "response": {
+              "fullResponse": true
+            }
+          }
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        4640,
+        160
+      ],
+      "id": "1f74fc66-5327-4972-8c45-1ca841e69015",
+      "name": "HTTP Request4 (send/ Recieve with server)",
+      "alwaysOutputData": true,
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ $json }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        1952,
+        624
+      ],
+      "id": "139e23c9-b956-44b5-9395-f1e15b1db3f0",
+      "name": "HTTP Request"
+    }
+  ],
+  "connections": {
+    "Merge": {
+      "main": [
+        [
+          {
+            "node": "Code13",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Merge12",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Edit Fields10": {
+      "main": [
+        [
+          {
+            "node": "Code5",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code5": {
+      "main": [
+        [
+          {
+            "node": "Merge",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "If4": {
+      "main": [
+        [
+          {
+            "node": "Code1",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Edit Fields10",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Edit Fields8",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Edit Fields6": {
+      "main": [
+        [
+          {
+            "node": "Merge2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Merge3": {
+      "main": [
+        [
+          {
+            "node": "If4",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If": {
+      "main": [
+        [
+          {
+            "node": "Edit Fields6",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Merge3",
+            "type": "main",
+            "index": 1
+          }
+        ],
+        [
+          {
+            "node": "Code9",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Merge5",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code10": {
+      "main": [
+        [
+          {
+            "node": "Merge24",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Insert rows in a table": {
+      "main": [
+        [
+          {
+            "node": "Merge5",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Edit Fields11": {
+      "main": [
+        [
+          {
+            "node": "Merge16",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Merge17",
+            "type": "main",
+            "index": 1
+          },
+          {
+            "node": "Merge27",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Code9": {
+      "main": [
+        [
+          {
+            "node": "Merge17",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Webhook8": {
+      "main": [
+        [
+          {
+            "node": "Edit Fields11",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Code35",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Edit Fields12",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Execute a SQL query4",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Edit Fields",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Edit Fields12": {
+      "main": [
+        [
+          {
+            "node": "Merge21",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Insert rows in a table1": {
+      "main": [
+        [
+          {
+            "node": "Merge12",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code13": {
+      "main": [
+        [
+          {
+            "node": "Merge16",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Merge12": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook7",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code": {
+      "main": [
+        [
+          {
+            "node": "If",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Merge16": {
+      "main": [
+        [
+          {
+            "node": "Insert rows in a table1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Edit Fields8": {
+      "main": [
+        [
+          {
+            "node": "Merge",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code1": {
+      "main": [
+        [
+          {
+            "node": "Merge22",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Code22",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Merge17": {
+      "main": [
+        [
+          {
+            "node": "Insert rows in a table",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Merge5": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Execute a SQL query4": {
+      "main": [
+        [
+          {
+            "node": "Code21",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code21": {
+      "main": [
+        [
+          {
+            "node": "Merge21",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Merge21": {
+      "main": [
+        [
+          {
+            "node": "Code10",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code34": {
+      "main": [
+        [
+          {
+            "node": "HTTP Request",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Edit Fields22": {
+      "main": [
+        [
+          {
+            "node": "Code",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Merge24": {
+      "main": [
+        [
+          {
+            "node": "Code34",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code35": {
+      "main": [
+        [
+          {
+            "node": "Merge24",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Merge22": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Insert rows in a table7": {
+      "main": [
+        [
+          {
+            "node": "Merge22",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Code22": {
+      "main": [
+        [
+          {
+            "node": "Merge27",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Merge27": {
+      "main": [
+        [
+          {
+            "node": "Insert rows in a table7",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Merge2": {
+      "main": [
+        [
+          {
+            "node": "HTTP Request4 (send/ Recieve with server)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Edit Fields": {
+      "main": [
+        [
+          {
+            "node": "Merge2",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "HTTP Request4 (send/ Recieve with server)": {
+      "main": [
+        [
+          {
+            "node": "Merge3",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP Request": {
+      "main": [
+        [
+          {
+            "node": "Edit Fields22",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  }
+}
