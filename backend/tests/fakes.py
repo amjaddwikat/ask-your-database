@@ -1,5 +1,6 @@
 """Test doubles: a scripted LLM and an in-memory warehouse that still uses the real QueryGuard."""
 
+import datetime as dt
 import json
 from collections import deque
 from typing import Any, ClassVar
@@ -7,6 +8,7 @@ from typing import Any, ClassVar
 from app.db.guard import QueryGuard
 from app.db.warehouse import (
     Column,
+    DateCoverage,
     QueryExecutionError,
     QueryResult,
     Table,
@@ -19,14 +21,22 @@ SCHEMA = WarehouseSchema(
         Table(
             "telecom_dw",
             "dimcustomer",
-            (Column("CustomerID", "int"), Column("Age", "int"), Column("ContractType", "varchar")),
+            (
+                Column("CustomerID", "int"),
+                Column("Age", "int"),
+                Column("ContractType", "varchar"),
+                Column("JoinDate", "date"),
+            ),
         ),
         Table(
             "telecom_dw",
             "factbilling",
             (Column("BillingID", "int"), Column("CustomerID", "int"), Column("BillAmount", "dec")),
         ),
-    )
+    ),
+    date_coverage=(
+        DateCoverage("telecom_dw.dimcustomer.JoinDate", dt.date(2019, 1, 1), dt.date(2025, 12, 1)),
+    ),
 )
 
 

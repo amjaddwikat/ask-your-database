@@ -65,6 +65,7 @@ class Orchestrator:
         history = format_history(await self._memory.recent(session_id))
         assert self._warehouse.schema is not None, "warehouse schema not loaded"
         schema = self._warehouse.schema.describe()
+        time_context = self._warehouse.schema.time_context()
 
         async with trace.step("router"):
             decision = await self._router.decide(question, schema, history)
@@ -92,7 +93,7 @@ class Orchestrator:
         if decision.action == "plot" and result.rows:
             async with trace.step("analysis+plot", detail="parallel"):
                 analysis, spec = await asyncio.gather(
-                    self._analysis.analyze(rephrased, result),
+                    self._analysis.analyze(rephrased, result, time_context),
                     self._safe_chart(rephrased, result),
                 )
             if spec is not None:
@@ -101,7 +102,7 @@ class Orchestrator:
                 analysis += "\n\n_I couldn't build a chart for this result._"
         else:
             async with trace.step("analysis"):
-                analysis = await self._analysis.analyze(rephrased, result)
+                analysis = await self._analysis.analyze(rephrased, result, time_context)
 
         response = ChatResponse(
             session_id=session_id,

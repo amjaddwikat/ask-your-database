@@ -13,6 +13,10 @@ Rules:
 - Return aggregated results where possible instead of raw rows; keep result sets small.
 - For chart requests, return exactly the columns needed for the chart: one dimension and one or two
   measures, ordered sensibly (by time for trends).
+- Resolve relative periods ("last 6 months", "this year", "recently") against the latest date in
+  the data, given under "Date coverage" below, never against today's date. Do not use CURRENT_DATE,
+  CURDATE() or NOW(); write that latest date as a literal instead. "Last N months" means the N
+  most recent months including the latest one, so use `> DATE_SUB(latest, INTERVAL N MONTH)`.
 - If the question needs a value you do not know (e.g. "my region"), or cannot be answered from this
   schema, return an empty `sql` and explain what is missing in `explanation`.
 
