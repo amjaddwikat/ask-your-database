@@ -1,3 +1,6 @@
+<img width="1870" height="980" alt="image" src="https://github.com/user-attachments/assets/960b87a5-5bc1-4133-b9d1-ba53a24967b9" />
+
+
 # Ask Your Database
 
 [![CI](https://github.com/amjaddwikat/ask-your-database/actions/workflows/ci.yml/badge.svg)](https://github.com/amjaddwikat/ask-your-database/actions/workflows/ci.yml)
