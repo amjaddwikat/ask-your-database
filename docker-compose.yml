@@ -24,6 +24,7 @@ services:
     environment:
       API_KEY: ${API_KEY}
       GEMINI_API_KEY: ${GEMINI_API_KEY}
+      GEMINI_MODEL: ${GEMINI_MODEL:-gemini-3.5-flash}
       WAREHOUSE_URL: mysql+aiomysql://warehouse_ro:${WAREHOUSE_DB_PASSWORD}@mysql:3306/telecom_dw
       APP_DB_URL: mysql+aiomysql://app:${APP_DB_PASSWORD}@mysql:3306/app
       CORS_ORIGINS: '["http://localhost:5173","http://localhost:8080"]'
