@@ -3,12 +3,13 @@
 import datetime as dt
 import logging
 import time
+from collections.abc import Sequence
 from dataclasses import dataclass, field
 from decimal import Decimal
 from typing import Any
 
-from sqlalchemy import bindparam, event, text
-from sqlalchemy.ext.asyncio import AsyncEngine, create_async_engine
+from sqlalchemy import Row, bindparam, event, text
+from sqlalchemy.ext.asyncio import AsyncConnection, AsyncEngine, create_async_engine
 
 from app.db.guard import QueryGuard
 
@@ -43,13 +44,41 @@ class ForeignKey:
 
 
 @dataclass(frozen=True)
+class DateCoverage:
+    column: str  # schema.table.column
+    earliest: dt.date
+    latest: dt.date
+
+
+DATE_TYPES = ("date", "datetime", "timestamp")
+
+
+@dataclass(frozen=True)
 class WarehouseSchema:
     tables: tuple[Table, ...]
     foreign_keys: tuple[ForeignKey, ...] = ()
+    date_coverage: tuple[DateCoverage, ...] = ()
 
     @property
     def table_names(self) -> set[str]:
         return {t.qualified_name for t in self.tables}
+
+    @property
+    def latest_date(self) -> dt.date | None:
+        """The most recent date anywhere in the data: the warehouse's notion of "today"."""
+        return max((c.latest for c in self.date_coverage), default=None)
+
+    def time_context(self) -> str:
+        """How agents should read relative periods ("last 6 months") against historical data."""
+        latest = self.latest_date
+        if latest is None:
+            return "No date range is known for this data."
+        day = latest.isoformat()
+        return (
+            f"The data is a historical snapshot whose most recent date is {day}. "
+            f'Treat {day} as "today": relative periods such as "last 6 months", "this year" or '
+            f'"recently" end on that date. Dates up to {day} are not in the future.'
+        )
 
     def describe(self) -> str:
         """Compact text form of the schema, used inside LLM prompts."""
@@ -60,6 +89,13 @@ class WarehouseSchema:
         if self.foreign_keys:
             lines.append("\nRelationships:")
             lines.extend(f"- {fk.source} -> {fk.target}" for fk in self.foreign_keys)
+        if self.date_coverage:
+            lines.append("\nDate coverage:")
+            lines.extend(
+                f"- {c.column}: {c.earliest.isoformat()} to {c.latest.isoformat()}"
+                for c in self.date_coverage
+            )
+            lines.append(self.time_context())
         return "\n".join(lines)
 
 
@@ -136,6 +172,7 @@ class Warehouse:
                     params,
                 )
             ).all()
+            coverage = await _load_date_coverage(conn, col_rows)
 
         tables: dict[tuple[str, str], list[Column]] = {}
         for schema, table, column, col_type in col_rows:
@@ -145,6 +182,7 @@ class Warehouse:
             foreign_keys=tuple(
                 ForeignKey(f"{s}.{t}.{c}", f"{rs}.{rt}.{rc}") for s, t, c, rs, rt, rc in fk_rows
             ),
+            date_coverage=coverage,
         )
         self._guard = QueryGuard(
             self.schema.table_names, default_schema=schemas[0], max_rows=self._max_rows
@@ -184,6 +222,35 @@ class Warehouse:
     async def ping(self) -> None:
         async with self._engine.connect() as conn:
             await conn.execute(text("SELECT 1"))
+
+
+async def _load_date_coverage(
+    conn: AsyncConnection, col_rows: Sequence[Row[Any]]
+) -> tuple[DateCoverage, ...]:
+    """MIN/MAX of every date column, so agents resolve "last 6 months" against the data
+    rather than the wall clock (the sample warehouse is a historical snapshot)."""
+    coverage: list[DateCoverage] = []
+    for schema, table, column, col_type in col_rows:
+        if not str(col_type).lower().startswith(DATE_TYPES):
+            continue
+        col = _quote_ident(column)
+        source = f"{_quote_ident(schema)}.{_quote_ident(table)}"
+        # Identifiers come from information_schema (not user input) and are backtick-quoted.
+        query = text(f"SELECT MIN({col}), MAX({col}) FROM {source}")  # noqa: S608
+        earliest, latest = (await conn.execute(query)).one()
+        if earliest is not None and latest is not None:
+            coverage.append(
+                DateCoverage(f"{schema}.{table}.{column}", _as_date(earliest), _as_date(latest))
+            )
+    return tuple(coverage)
+
+
+def _quote_ident(name: str) -> str:
+    return "`" + name.replace("`", "``") + "`"
+
+
+def _as_date(value: dt.date | dt.datetime) -> dt.date:
+    return value.date() if isinstance(value, dt.datetime) else value
 
 
 def _describe_db_error(e: Exception) -> str:

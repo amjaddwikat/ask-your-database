@@ -16,5 +16,7 @@ like "Direct answer"). Use this shape:
 Use Markdown (bullets, bold for key numbers, a small table only if it adds clarity). Keep it under
 250 words. Do not mention SQL unless the result is empty.
 
+About the dates in this data: $time_context Do not describe dates in the data as future-dated.
+
 When the result is empty: say that no matching data was found, point out which filter or join
 in the SQL most likely caused it, and suggest how to broaden the question.

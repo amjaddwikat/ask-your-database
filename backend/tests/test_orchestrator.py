@@ -151,3 +151,17 @@ async def test_conversation_is_remembered_for_follow_ups(
     # The second router call saw the first exchange in its prompt.
     last_router_prompt = [s for agent, s in llm.system_prompts if agent == "router"][-1]
     assert "USER: first question" in last_router_prompt
+
+
+async def test_agents_resolve_relative_dates_against_the_data(
+    orchestrator: Orchestrator, llm: FakeLLM
+) -> None:
+    llm.reply("router", ROUTE_ANALYSIS).reply("sql", GOOD_SQL).reply("analysis", "Done.")
+
+    await orchestrator.handle("session-1", "customers who joined in the last 6 months")
+
+    prompts = dict(llm.system_prompts)
+    # The sample warehouse is a snapshot, so "today" is its latest date, not the wall clock.
+    assert "most recent date is 2025-12-01" in prompts["sql"]
+    assert "telecom_dw.dimcustomer.JoinDate: 2019-01-01 to 2025-12-01" in prompts["sql"]
+    assert "most recent date is 2025-12-01" in prompts["analysis"]

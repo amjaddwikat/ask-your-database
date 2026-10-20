@@ -5,6 +5,7 @@
         pytest -m integration
 """
 
+import datetime as dt
 import os
 from collections.abc import AsyncIterator
 
@@ -38,6 +39,14 @@ async def test_schema_is_introspected_with_foreign_keys(warehouse: Warehouse) ->
     }
     described = warehouse.schema.describe()
     assert "telecom_dw.factbilling.CustomerID -> telecom_dw.dimcustomer.CustomerID" in described
+
+
+async def test_date_coverage_comes_from_the_data(warehouse: Warehouse) -> None:
+    assert warehouse.schema is not None
+    coverage = {c.column: (c.earliest, c.latest) for c in warehouse.schema.date_coverage}
+    # The seed has one dimdate row per month, Jan 2024 - Dec 2025.
+    assert coverage["telecom_dw.dimdate.FullDate"] == (dt.date(2024, 1, 1), dt.date(2025, 12, 1))
+    assert warehouse.schema.latest_date == dt.date(2025, 12, 1)
 
 
 async def test_runs_an_analytical_query(warehouse: Warehouse) -> None:
